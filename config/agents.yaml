@@ -1,10 +1,11 @@
 # Agent roster configuration
-# Each agent has: name, model, schedule, description, and context requirements
+# Each agent has: name, model, max_tokens, schedule, description, and context requirements
 
 agents:
   chief_of_staff:
     name: "Chief of Staff"
     model: "claude-sonnet-4-5-20250514"
+    max_tokens: 3000
     schedule: "daily"
     slack_channel_env: "SLACK_CHANNEL_CHIEF_OF_STAFF"
     interactive: true
@@ -20,6 +21,7 @@ agents:
   domain_intelligence:
     name: "Domain Intelligence"
     model: "claude-sonnet-4-5-20250514"
+    max_tokens: 2000
     schedule: "always_on"
     slack_channel_env: "SLACK_CHANNEL_DOMAIN_INTEL"
     interactive: true
@@ -35,6 +37,7 @@ agents:
   compliance:
     name: "Compliance & Security"
     model: "claude-sonnet-4-5-20250514"
+    max_tokens: 2000
     schedule: "weekly"
     interactive: false
     description: >
@@ -47,6 +50,7 @@ agents:
   market_research:
     name: "Market Research & GTM"
     model: "claude-sonnet-4-5-20250514"
+    max_tokens: 2000
     schedule: "weekly"
     interactive: false
     description: >
@@ -55,76 +59,4 @@ agents:
     context_includes:
       - "product_docs"
       - "own_memory"
-      - "domain_intel_summary"
-
-  fundraising:
-    name: "Fundraising Intelligence"
-    model: "claude-sonnet-4-5-20250514"
-    schedule: "weekly"
-    interactive: false
-    description: >
-      Builds qualified investor pipeline for GovTech pre-seed/seed. Develops
-      fundraising positioning, market sizing, and pitch materials.
-    context_includes:
-      - "product_docs"
-      - "own_memory"
-      - "market_research_summary"
-      - "brand_summary"
-
-  competitive_intel:
-    name: "Competitive Intelligence"
-    model: "claude-sonnet-4-5-20250514"
-    schedule: "biweekly"
-    interactive: false
-    description: >
-      Monitors competitors, adjacent solutions, and market movements.
-      Maintains competitive landscape map and differentiation positioning.
-    context_includes:
-      - "product_docs"
-      - "own_memory"
-
-  technical_pm:
-    name: "Technical PM"
-    model: "claude-sonnet-4-5-20250514"
-    schedule: "event_triggered"
-    interactive: false
-    description: >
-      Holds a living mental model of the codebase. Translates intelligence from
-      all other agents into engineering-ready task specifications for Claude Code.
-      Knows the data model, rules engine, API endpoints, and abstractions.
-    context_includes:
-      - "product_docs"
-      - "codebase_context"
-      - "own_memory"
-      - "domain_intel_summary"
-
-  regulatory:
-    name: "Regulatory Intelligence"
-    model: "claude-sonnet-4-5-20250514"
-    schedule: "weekly"
-    interactive: false
-    description: >
-      Tracks regulatory frameworks governing government grant compliance (2 CFR 200,
-      FAR, OMB circulars). Builds rule pattern libraries that accelerate agency onboarding.
-    context_includes:
-      - "product_docs"
-      - "own_memory"
-
-  brand_marketing:
-    name: "Brand & Marketing"
-    model: "claude-sonnet-4-5-20250514"
-    schedule: "weekly"
-    interactive: false
-    description: >
-      Develops brand identity, messaging framework, and marketing materials.
-      Researches naming options. Produces pitch deck content and sales collateral.
-    context_includes:
-      - "product_docs"
-      - "own_memory"
-      - "market_research_summary"
-      - "competitive_intel_summary"
-
-# Model tier strategy:
-# - claude-sonnet-4-5-20250514: Default for all agents (fast, capable, cost-effective)
-# - claude-opus-4-5-20250514: Use for Chief of Staff complex synthesis tasks or high-stakes outputs
-# - claude-haiku-3-5-20241022: Use for simple routing, classification, and summarization
+      - "domain_intel_summary

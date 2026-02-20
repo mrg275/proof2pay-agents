@@ -46,7 +46,6 @@ class AgentRunner:
             logger.warning(f"No prompt file found for {agent_id}")
             return ""
 
-        # Import the module and get SYSTEM_PROMPT
         import importlib.util
 
         spec = importlib.util.spec_from_file_location(agent_id, prompt_path)
@@ -185,23 +184,26 @@ class AgentRunner:
         # Choose model
         model = model_override or agent_config.get("model", AnthropicClient.SONNET)
 
+        # Choose max_tokens from agent config, default 2000
+        max_tokens = agent_config.get("max_tokens", 2000)
+
         # Check if this agent has tools
         agent_tools = self._get_agent_tools(agent_id)
 
         if agent_tools and self.tool_handler:
-            # Tool-using agent: use conversation-style call with tool loop
             response = self._run_with_tools(
                 system_prompt=system_prompt,
                 user_message=user_message,
                 model=model,
                 tools=agent_tools,
+                max_tokens=max_tokens,
             )
         else:
-            # Standard single-turn agent
             response = self.client.call(
                 system_prompt=system_prompt,
                 user_message=user_message,
                 model=model,
+                max_tokens=max_tokens,
             )
 
         # Save output to memory
@@ -227,137 +229,4 @@ class AgentRunner:
             "agent_id": agent_id,
             "task": task,
             "tokens": {
-                "input": response["input_tokens"],
-                "output": response["output_tokens"],
-            },
-            "output_file": output_file,
-        }
-
-    def _get_agent_tools(self, agent_id: str) -> list:
-        """Get tool definitions for an agent, if any."""
-        from orchestrator.agent_tools import TECHNICAL_PM_TOOLS, RESEARCH_AGENT_TOOLS
-
-        tool_map = {
-            "technical_pm": TECHNICAL_PM_TOOLS,
-            "market_research": RESEARCH_AGENT_TOOLS,
-            "competitive_intel": RESEARCH_AGENT_TOOLS,
-            "fundraising": RESEARCH_AGENT_TOOLS,
-        }
-        return tool_map.get(agent_id, [])
-
-    def _run_with_tools(
-        self,
-        system_prompt: str,
-        user_message: str,
-        model: str,
-        tools: list,
-        max_iterations: int = 8,
-    ) -> dict:
-        """Run an agent with tool access, handling the tool call loop."""
-        messages = [{"role": "user", "content": user_message}]
-
-        response = self.client.call_with_conversation(
-            system_prompt=system_prompt,
-            messages=messages,
-            model=model,
-            tools=tools,
-        )
-
-        total_input = response.get("input_tokens", 0)
-        total_output = response.get("output_tokens", 0)
-        iterations = 0
-
-        while response.get("tool_calls") and iterations < max_iterations:
-            iterations += 1
-
-            # Build assistant message with tool uses
-            assistant_content = []
-            if response.get("content"):
-                assistant_content.append({"type": "text", "text": response["content"]})
-            for tc in response["tool_calls"]:
-                assistant_content.append({
-                    "type": "tool_use",
-                    "id": tc["id"],
-                    "name": tc["name"],
-                    "input": tc["input"],
-                })
-            messages.append({"role": "assistant", "content": assistant_content})
-
-            # Execute tool calls
-            tool_results = []
-            for tc in response["tool_calls"]:
-                result = self.tool_handler.handle_tool_call(tc)
-                tool_results.append({
-                    "type": "tool_result",
-                    "tool_use_id": tc["id"],
-                    "content": result["result"],
-                })
-            messages.append({"role": "user", "content": tool_results})
-
-            # Get next response
-            response = self.client.call_with_conversation(
-                system_prompt=system_prompt,
-                messages=messages,
-                model=model,
-                tools=tools,
-            )
-            total_input += response.get("input_tokens", 0)
-            total_output += response.get("output_tokens", 0)
-
-        return {
-            "content": response.get("content", ""),
-            "input_tokens": total_input,
-            "output_tokens": total_output,
-            "model": model,
-            "stop_reason": response.get("stop_reason", ""),
-        }
-
-    def run_interactive(
-        self,
-        agent_id: str,
-        user_message: str,
-        conversation_id: str,
-        additional_context: Optional[str] = None,
-    ) -> str:
-        """
-        Run an interactive agent with conversation memory.
-        Used for Slack-based agents (Chief of Staff, Domain Intelligence).
-        """
-        agent_config = self.agents.get(agent_id)
-        if not agent_config:
-            raise ValueError(f"Unknown agent: {agent_id}")
-
-        # Load system prompt
-        system_prompt = self._load_system_prompt(agent_id)
-
-        # Assemble context
-        context = self._assemble_context(agent_id, additional_context=additional_context)
-
-        # Full system prompt with context
-        full_system = f"{system_prompt}\n\n---\n\n{context}"
-
-        # Get conversation history
-        history = self.memory.get_conversation(agent_id, conversation_id)
-
-        # Build messages in Anthropic format
-        messages = []
-        for turn in history[-20:]:  # Last 20 turns to stay within context
-            messages.append({
-                "role": turn["role"],
-                "content": turn["content"],
-            })
-        messages.append({"role": "user", "content": user_message})
-
-        # Make API call
-        model = agent_config.get("model", AnthropicClient.SONNET)
-        response = self.client.call_with_conversation(
-            system_prompt=full_system,
-            messages=messages,
-            model=model,
-        )
-
-        # Save conversation turns
-        self.memory.save_conversation_turn(agent_id, conversation_id, "user", user_message)
-        self.memory.save_conversation_turn(agent_id, conversation_id, "assistant", response["content"])
-
-        return response["content"]
+                "input": response["input

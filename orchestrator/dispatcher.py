@@ -3,14 +3,18 @@ Task dispatcher. Handles Chief of Staff delegation to specialist agents.
 Parses dispatch instructions and executes them via the agent runner.
 """
 
-import json
 import logging
+from datetime import date
 from typing import Optional
 
 from orchestrator.runner import AgentRunner
 from orchestrator.memory_manager import MemoryManager
 
 logger = logging.getLogger(__name__)
+
+# Daily spend guards
+DAILY_TOKEN_LIMIT = 150_000
+DISPATCH_LIMIT = 8
 
 # Tool definition for the Chief of Staff to dispatch tasks
 DISPATCH_TOOL = {
@@ -106,9 +110,45 @@ COS_TOOLS = [DISPATCH_TOOL, READ_AGENT_OUTPUT_TOOL]
 class Dispatcher:
     """Handles task dispatch from Chief of Staff to specialist agents."""
 
+    # Map of model tier names to Anthropic model IDs
+    MODEL_TIER_MAP = {
+        "opus": "claude-opus-4-5-20250514",
+        "sonnet": "claude-sonnet-4-5-20250929",
+        "haiku": "claude-haiku-4-5-20251001",
+    }
+
     def __init__(self, runner: AgentRunner, memory: MemoryManager):
         self.runner = runner
         self.memory = memory
+        self._daily_tokens = 0
+        self._daily_dispatches = 0
+        self._last_reset = self._today()
+
+    def _today(self) -> str:
+        return date.today().isoformat()
+
+    def _reset_if_new_day(self):
+        if self._today() != self._last_reset:
+            self._daily_tokens = 0
+            self._daily_dispatches = 0
+            self._last_reset = self._today()
+            logger.info("Daily spend counters reset for new day.")
+
+    def _check_budget(self, agent_id: str) -> Optional[str]:
+        """Returns an error string if budget exceeded, None if ok to proceed."""
+        self._reset_if_new_day()
+        if self._daily_tokens >= DAILY_TOKEN_LIMIT:
+            return (
+                f"Daily token limit ({DAILY_TOKEN_LIMIT:,}) reached. "
+                f"Used: {self._daily_tokens:,}. Dispatch to {agent_id} blocked. "
+                f"Resets tomorrow."
+            )
+        if self._daily_dispatches >= DISPATCH_LIMIT:
+            return (
+                f"Daily dispatch limit ({DISPATCH_LIMIT}) reached. "
+                f"Dispatch to {agent_id} blocked. Resets tomorrow."
+            )
+        return None
 
     def handle_tool_call(self, tool_call: dict) -> dict:
         """
@@ -131,13 +171,6 @@ class Dispatcher:
                 "success": False,
             }
 
-    # Map of model tier names to Anthropic model IDs
-    MODEL_TIER_MAP = {
-        "opus": "claude-opus-4-6",
-        "sonnet": "claude-sonnet-4-6",
-        "haiku": "claude-haiku-4-5-20251001",
-    }
-
     def _handle_dispatch(self, tool_id: str, inputs: dict) -> dict:
         """Execute a dispatch_agent tool call."""
         agent_id = inputs["agent_id"]
@@ -147,6 +180,16 @@ class Dispatcher:
         priority = inputs.get("priority", "medium")
         model_tier = inputs.get("model")
         model_override = self.MODEL_TIER_MAP.get(model_tier) if model_tier else None
+
+        # Budget check before every dispatch
+        budget_error = self._check_budget(agent_id)
+        if budget_error:
+            logger.warning(f"Budget guard blocked dispatch to {agent_id}: {budget_error}")
+            return {
+                "tool_use_id": tool_id,
+                "result": budget_error,
+                "success": False,
+            }
 
         logger.info(
             f"Dispatching task to {agent_id}: {task[:80]}... "
@@ -160,6 +203,18 @@ class Dispatcher:
                 additional_context=additional_context,
                 include_agent_summaries=context_from,
                 model_override=model_override,
+            )
+
+            # Track spend
+            tokens = result.get("tokens", {})
+            self._daily_tokens += tokens.get("input", 0)
+            self._daily_tokens += tokens.get("output", 0)
+            self._daily_dispatches += 1
+
+            logger.info(
+                f"Dispatch complete: {agent_id}. "
+                f"Daily spend: {self._daily_tokens:,} tokens, "
+                f"{self._daily_dispatches}/{DISPATCH_LIMIT} dispatches."
             )
 
             return {
