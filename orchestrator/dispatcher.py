@@ -133,9 +133,9 @@ class Dispatcher:
 
     # Map of model tier names to Anthropic model IDs
     MODEL_TIER_MAP = {
-        "opus": "claude-opus-4-5-20250514",
-        "sonnet": "claude-sonnet-4-5-20250514",
-        "haiku": "claude-haiku-3-5-20241022",
+        "opus": "claude-opus-4-6",
+        "sonnet": "claude-sonnet-4-6",
+        "haiku": "claude-haiku-4-5-20251001",
     }
 
     def _handle_dispatch(self, tool_id: str, inputs: dict) -> dict:
