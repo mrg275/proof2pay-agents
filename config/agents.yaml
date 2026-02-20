@@ -59,4 +59,4 @@ agents:
     context_includes:
       - "product_docs"
       - "own_memory"
-      - "domain_intel_summary
+      - "domain_intel_summary"
