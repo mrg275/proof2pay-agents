@@ -4,7 +4,7 @@
 agents:
   chief_of_staff:
     name: "Chief of Staff"
-    model: "claude-sonnet-4-5-20250514"
+    model: "claude-sonnet-4-5-20250929"
     max_tokens: 3000
     schedule: "daily"
     slack_channel_env: "SLACK_CHANNEL_CHIEF_OF_STAFF"
@@ -20,7 +20,7 @@ agents:
 
   domain_intelligence:
     name: "Domain Intelligence"
-    model: "claude-sonnet-4-5-20250514"
+    model: "claude-sonnet-4-5-20250929"
     max_tokens: 2000
     schedule: "always_on"
     slack_channel_env: "SLACK_CHANNEL_DOMAIN_INTEL"
@@ -36,7 +36,7 @@ agents:
 
   compliance:
     name: "Compliance & Security"
-    model: "claude-sonnet-4-5-20250514"
+    model: "claude-sonnet-4-5-20250929"
     max_tokens: 2000
     schedule: "weekly"
     interactive: false
@@ -49,7 +49,7 @@ agents:
 
   market_research:
     name: "Market Research & GTM"
-    model: "claude-sonnet-4-5-20250514"
+    model: "claude-sonnet-4-5-20250929"
     max_tokens: 2000
     schedule: "weekly"
     interactive: false

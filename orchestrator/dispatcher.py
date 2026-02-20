@@ -112,9 +112,9 @@ class Dispatcher:
 
     # Map of model tier names to Anthropic model IDs
     MODEL_TIER_MAP = {
-        "opus": "claude-opus-4-5-20250514",
-        "sonnet": "claude-sonnet-4-5-20250929",
-        "haiku": "claude-haiku-4-5-20251001",
+    "opus": "claude-opus-4-5-20250514",
+    "sonnet": "claude-sonnet-4-5-20250929",
+    "haiku": "claude-haiku-4-5-20251001",
     }
 
     def __init__(self, runner: AgentRunner, memory: MemoryManager):
